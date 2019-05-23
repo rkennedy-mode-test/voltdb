@@ -42,6 +42,7 @@ import org.voltdb.ExportStatsBase;
 import org.voltdb.ExportStatsBase.ExportStatsRow;
 import org.voltdb.RealVoltDB;
 import org.voltdb.SimpleClientResponseAdapter;
+import org.voltdb.SnapshotCompletionMonitor.ExportSnapshotTuple;
 import org.voltdb.StatsSelector;
 import org.voltdb.TTLManager;
 import org.voltdb.VoltDB;
@@ -649,7 +650,7 @@ public class ExportManager
 
     public void updateInitialExportStateToSeqNo(int partitionId, String signature,
                                                 boolean isRecover, boolean isRejoin,
-                                                Map<Integer, Pair<Long, Long>> sequenceNumberPerPartition,
+                                                Map<Integer, ExportSnapshotTuple> sequenceNumberPerPartition,
                                                 boolean isLowestSite) {
         //If the generation was completely drained, wait for the task to finish running
         //by waiting for the permit that will be generated

@@ -1553,7 +1553,8 @@ void VoltDBIPC::getUSOForExportTable(struct ipc_command *cmd) {
 
     size_t ackOffset;
     int64_t seqNo;
-    m_engine->getUSOForExportTable(ackOffset, seqNo, streamNameStr);
+    int64_t genId;
+    m_engine->getUSOForExportTable(ackOffset, seqNo, genId, streamNameStr);
 
     // write offset across bigendian.
     int64_t ackOffsetI64 = static_cast<int64_t>(ackOffset);
@@ -1563,6 +1564,9 @@ void VoltDBIPC::getUSOForExportTable(struct ipc_command *cmd) {
     // write the poll data. It is at least 4 bytes of length prefix.
     seqNo = htonll(seqNo);
     writeOrDie(m_fd, (unsigned char*)&seqNo, sizeof(seqNo));
+
+    genId = htonll(genId);
+    writeOrDie(m_fd, (unsigned char*)&genId, sizeof(genId));
 }
 
 void VoltDBIPC::hashinate(struct ipc_command* cmd) {

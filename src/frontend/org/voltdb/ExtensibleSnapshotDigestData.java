@@ -30,8 +30,8 @@ import org.json_voltpatches.JSONException;
 import org.json_voltpatches.JSONObject;
 import org.json_voltpatches.JSONStringer;
 import org.voltcore.logging.VoltLogger;
-import org.voltcore.utils.Pair;
 import org.voltdb.DRConsumerDrIdTracker.DRSiteDrIdTracker;
+import org.voltdb.SnapshotCompletionMonitor.ExportSnapshotTuple;
 import org.voltdb.iv2.MpInitiator;
 import org.voltdb.sysprocs.saverestore.SnapshotUtil;
 
@@ -43,6 +43,7 @@ public class ExtensibleSnapshotDigestData {
     public static final String PARTITION = "partition";
     public static final String EXPORT_SEQUENCE_NUMBER = "exportSequenceNumber";
     public static final String EXPORT_USO = "exportUso";
+    public static final String EXPORT_GENERATION_ID = "exportGenerationId";
 
     public static final String DISABLED_EXTERNAL_STREAMS = "disabledExternalStreams";
 
@@ -53,7 +54,7 @@ public class ExtensibleSnapshotDigestData {
      * m_exportSequenceNumbers and kept until the next snapshot is started in which case they are repopulated.
      * Decoupling them seems like a good idea in case snapshot code is every re-organized.
      */
-    private final Map<String, Map<Integer, Pair<Long, Long>>> m_exportSequenceNumbers;
+    private final Map<String, Map<Integer, ExportSnapshotTuple>> m_exportSequenceNumbers;
 
     /**
      * Same as m_exportSequenceNumbersToLogOnCompletion, but for m_drTupleStreamInfo
@@ -81,7 +82,7 @@ public class ExtensibleSnapshotDigestData {
     private final JSONObject m_elasticOperationMetadata;
 
     public ExtensibleSnapshotDigestData(
-            Map<String, Map<Integer, Pair<Long, Long>>> exportSequenceNumbers,
+            Map<String, Map<Integer, ExportSnapshotTuple>> exportSequenceNumbers,
             Map<Integer, TupleStreamStateInfo> drTupleStreamInfo,
             Map<Integer, JSONObject> drMixedClusterSizeConsumerState,
             JSONObject elasticOperationMetadata, final JSONObject jsData) {
@@ -98,16 +99,17 @@ public class ExtensibleSnapshotDigestData {
 
     private void writeExportSequencesToSnapshot(JSONStringer stringer) throws JSONException {
             stringer.key(EXPORT_SEQUENCE_NUMBER_ARR).array();
-            for (Map.Entry<String, Map<Integer, Pair<Long, Long>>> entry : m_exportSequenceNumbers.entrySet()) {
+            for (Map.Entry<String, Map<Integer, ExportSnapshotTuple>> entry : m_exportSequenceNumbers.entrySet()) {
                 stringer.object();
 
                 stringer.keySymbolValuePair(EXPORT_TABLE_NAME, entry.getKey());
                 stringer.key(SEQUENCE_NUM_PER_PARTITION).array();
-                for (Map.Entry<Integer, Pair<Long,Long>> sequenceNumber : entry.getValue().entrySet()) {
+                for (Map.Entry<Integer, ExportSnapshotTuple> sequenceNumber : entry.getValue().entrySet()) {
                     stringer.object();
                     stringer.keySymbolValuePair(PARTITION, sequenceNumber.getKey());
-                    stringer.keySymbolValuePair(EXPORT_USO, sequenceNumber.getValue().getFirst());
-                    stringer.keySymbolValuePair(EXPORT_SEQUENCE_NUMBER, sequenceNumber.getValue().getSecond());
+                    stringer.keySymbolValuePair(EXPORT_USO, sequenceNumber.getValue().getAckOffset());
+                    stringer.keySymbolValuePair(EXPORT_SEQUENCE_NUMBER, sequenceNumber.getValue().getSequenceNumber());
+                    stringer.keySymbolValuePair(EXPORT_GENERATION_ID, sequenceNumber.getValue().getGenerationId());
                     stringer.endObject();
                 }
                 stringer.endArray();
@@ -131,7 +133,7 @@ public class ExtensibleSnapshotDigestData {
             jsonObj.put(EXPORT_SEQUENCE_NUMBER_ARR, tableSequenceMap);
         }
 
-        for (Map.Entry<String, Map<Integer, Pair<Long, Long>>> tableEntry : m_exportSequenceNumbers.entrySet()) {
+        for (Map.Entry<String, Map<Integer, ExportSnapshotTuple>> tableEntry : m_exportSequenceNumbers.entrySet()) {
             JSONObject sequenceNumbers;
             final String tableName = tableEntry.getKey();
             if (tableSequenceMap.has(tableName)) {
@@ -141,11 +143,12 @@ public class ExtensibleSnapshotDigestData {
                 tableSequenceMap.put(tableName, sequenceNumbers);
             }
 
-            for (Map.Entry<Integer, Pair<Long, Long>> partitionEntry : tableEntry.getValue().entrySet()) {
+            for (Map.Entry<Integer, ExportSnapshotTuple> partitionEntry : tableEntry.getValue().entrySet()) {
                 final Integer partitionId = partitionEntry.getKey();
                 final String partitionIdString = partitionId.toString();
-                final Long ackOffset = partitionEntry.getValue().getFirst();
-                final Long partitionSequenceNumber = partitionEntry.getValue().getSecond();
+                final Long ackOffset = partitionEntry.getValue().getAckOffset();
+                final Long partitionSequenceNumber = partitionEntry.getValue().getSequenceNumber();
+                final Long generationId = partitionEntry.getValue().getGenerationId();
 
                 /*
                  * Check that the sequence number is the same everywhere and log if it isn't.
@@ -164,10 +167,13 @@ public class ExtensibleSnapshotDigestData {
 
                     Long existingAckOffset = existingEntry.getLong("ackOffset");
                     existingEntry.put("ackOffset", Math.max(ackOffset, existingAckOffset));
+                    Long existingGenerationId = existingEntry.getLong("generationId");
+                    existingEntry.put("generationId", Math.max(generationId, existingGenerationId));
                 } else {
                     JSONObject newObj = new JSONObject();
                     newObj.put("sequenceNumber", partitionSequenceNumber);
                     newObj.put("ackOffset", ackOffset);
+                    newObj.put("generationId", generationId);
                     sequenceNumbers.put(partitionIdString, newObj);
                 }
             }

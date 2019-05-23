@@ -60,6 +60,7 @@ import org.voltcore.utils.CoreUtils;
 import org.voltcore.utils.Pair;
 import org.voltdb.ExportStatsBase.ExportStatsRow;
 import org.voltdb.MockVoltDB;
+import org.voltdb.SnapshotCompletionMonitor.ExportSnapshotTuple;
 import org.voltdb.VoltDB;
 import org.voltdb.VoltType;
 import org.voltdb.catalog.CatalogMap;
@@ -133,7 +134,7 @@ public class TestExportDataSource extends TestCase {
         @Override
         public void updateInitialExportStateToSeqNo(int partitionId,
                 String signature, boolean isRecover, boolean isRejoin,
-                Map<Integer, Pair<Long, Long>> sequenceNumberPerPartition,
+                Map<Integer, ExportSnapshotTuple> sequenceNumberPerPartition,
                 boolean isLowestSite) {
         }
 

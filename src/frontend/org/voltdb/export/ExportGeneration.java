@@ -55,6 +55,7 @@ import org.voltcore.zk.ZKUtil;
 import org.voltdb.CatalogContext;
 import org.voltdb.ExportStatsBase.ExportStatsRow;
 import org.voltdb.RealVoltDB;
+import org.voltdb.SnapshotCompletionMonitor.ExportSnapshotTuple;
 import org.voltdb.VoltDB;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltZK;
@@ -863,7 +864,7 @@ public class ExportGeneration implements Generation {
     @Override
     public void updateInitialExportStateToSeqNo(int partitionId, String streamName,
                                                 boolean isRecover, boolean isRejoin,
-                                                Map<Integer, Pair<Long, Long>> sequenceNumberPerPartition,
+                                                Map<Integer, ExportSnapshotTuple> sequenceNumberPerPartition,
                                                 boolean isLowestSite) {
         // pre-iv2, the truncation point is the snapshot transaction id.
         // In iv2, truncation at the per-partition txn id recorded in the snapshot.
@@ -873,9 +874,9 @@ public class ExportGeneration implements Generation {
         if (dataSource != null) {
             ExportDataSource source = dataSource.get(streamName);
             if (source != null) {
-                Pair<Long, Long> usoAndSeq = sequenceNumberPerPartition.get(partitionId);
-                if (usoAndSeq != null) {
-                    ListenableFuture<?> task = source.truncateExportToSeqNo(isRecover, isRejoin, usoAndSeq.getSecond());
+                ExportSnapshotTuple sequences = sequenceNumberPerPartition.get(partitionId);
+                if (sequences != null) {
+                    ListenableFuture<?> task = source.truncateExportToSeqNo(isRecover, isRejoin, sequences.getSequenceNumber(), sequences.getGenerationId());
                     tasks.add(task);
                 }
             }
@@ -887,9 +888,9 @@ public class ExportGeneration implements Generation {
                 for (Map<String, ExportDataSource> dataSources : m_dataSourcesByPartition.values()) {
                     for (ExportDataSource source : dataSources.values()) {
                         if (!source.inCatalog()) {
-                            Pair<Long, Long> pair = sequenceNumberPerPartition.get(source.getPartitionId());
-                            if (pair != null) {
-                                ListenableFuture<?> task = source.truncateExportToSeqNo(isRecover, isRejoin, pair.getSecond());
+                            ExportSnapshotTuple sequences = sequenceNumberPerPartition.get(source.getPartitionId());
+                            if (sequences != null) {
+                                ListenableFuture<?> task = source.truncateExportToSeqNo(isRecover, isRejoin, sequences.getSequenceNumber(), sequences.getGenerationId());
                                 tasks.add(task);
                             }
                         }

@@ -253,10 +253,11 @@ int64_t StreamedTable::allocatedTupleMemory() const {
  * Get the current offset in bytes of the export stream for this Table
  * since startup.
  */
-void StreamedTable::getExportStreamPositions(int64_t &seqNo, size_t &streamBytesUsed) {
+void StreamedTable::getExportStreamPositions(int64_t &seqNo, size_t &streamBytesUsed, int64_t &genId) {
     seqNo = m_sequenceNo;
     if (m_wrapper) {
         streamBytesUsed = m_wrapper->bytesUsed();
+        genId = m_wrapper->getGenerationId();
     }
 }
 

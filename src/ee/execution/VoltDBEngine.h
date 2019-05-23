@@ -518,7 +518,7 @@ class __attribute__((visibility("default"))) VoltDBEngine {
         int32_t deleteMigratedRows(int64_t txnId, int64_t spHandle, int64_t uniqueId,
                 std::string tableName, int64_t deletableTxnId, int32_t maxRowCount, int64_t undoToken);
 
-        void getUSOForExportTable(size_t& ackOffset, int64_t& seqNo, std::string streamName);
+        void getUSOForExportTable(size_t& ackOffset, int64_t& seqNo, int64_t &genId, std::string streamName);
 
         /**
          * Retrieve a hash code for the specified table

@@ -16,6 +16,10 @@
  */
 package org.voltdb;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -36,13 +40,12 @@ import org.apache.zookeeper_voltpatches.ZooKeeper;
 import org.json_voltpatches.JSONObject;
 import org.voltcore.logging.VoltLogger;
 import org.voltcore.utils.CoreUtils;
-import org.voltcore.utils.Pair;
 import org.voltdb.DRConsumerDrIdTracker.DRSiteDrIdTracker;
 import org.voltdb.SnapshotCompletionInterest.SnapshotCompletionEvent;
+import org.voltdb.sysprocs.saverestore.SnapshotPathType;
+import org.voltdb.sysprocs.saverestore.SnapshotUtil;
 
 import com.google_voltpatches.common.collect.ImmutableMap;
-import org.voltdb.sysprocs.saverestore.SnapshotUtil;
-import org.voltdb.sysprocs.saverestore.SnapshotPathType;
 
 public class SnapshotCompletionMonitor {
     private static final VoltLogger SNAP_LOG = new VoltLogger("SNAPSHOT");
@@ -71,6 +74,52 @@ public class SnapshotCompletionMonitor {
             }
         }
     };
+
+    public static class ExportSnapshotTuple implements Serializable {
+        private long m_ackOffset;
+        private long m_sequenceNumber;
+        private long m_generationId;
+
+        public ExportSnapshotTuple(long uso, long seqNo, long timestamp) {
+            m_ackOffset = uso;
+            m_sequenceNumber = seqNo;
+            m_generationId = timestamp;
+        }
+
+        public ExportSnapshotTuple() {
+            this(0L, 0L, 0L);
+        }
+
+        public long getAckOffset() {
+            return m_ackOffset;
+        }
+
+        public long getSequenceNumber() {
+            return m_sequenceNumber;
+        }
+
+        public long getGenerationId() {
+            return m_generationId;
+        }
+
+        /**
+         * Serialize this {@code ExportSnapshotTuple} instance.
+         *
+         * @serialData The USO of export stream ({@code long}) (ack offset) and export sequence number ({@code long}) is emitted , followed by size of
+         * generation id ({@code long}) (timestamp of most recent catalog update in snapshot).
+         */
+         private void writeObject(ObjectOutputStream out) throws IOException {
+             out.writeLong(m_ackOffset);
+             out.writeLong(m_sequenceNumber);
+             out.writeLong(m_generationId);
+         }
+
+         private void readObject(ObjectInputStream in) throws IOException {
+             m_ackOffset = in.readLong();
+             m_sequenceNumber = in.readLong();
+             m_generationId = in.readLong();
+         }
+    }
 
     /*
      * For every snapshot, the local sites will log their partition specific txnids here
@@ -176,16 +225,16 @@ public class SnapshotCompletionMonitor {
              * Convert the JSON object containing the export sequence numbers for each
              * table and partition to a regular map
              */
-            Map<String, Map<Integer, Pair<Long, Long>>> exportSequenceNumbers = null;
+            Map<String, Map<Integer, ExportSnapshotTuple>> exportSequenceNumbers = null;
             final JSONObject exportSequenceJSON = jsonObj.getJSONObject("exportSequenceNumbers");
-            final ImmutableMap.Builder<String, Map<Integer, Pair<Long, Long>>> builder =
+            final ImmutableMap.Builder<String, Map<Integer, ExportSnapshotTuple>> builder =
                     ImmutableMap.builder();
             @SuppressWarnings("unchecked")
             final Iterator<String> tableKeys = exportSequenceJSON.keys();
             while (tableKeys.hasNext()) {
                 final String tableName = tableKeys.next();
                 final JSONObject tableSequenceNumbers = exportSequenceJSON.getJSONObject(tableName);
-                ImmutableMap.Builder<Integer, Pair<Long, Long>> tableBuilder = ImmutableMap.builder();
+                ImmutableMap.Builder<Integer, ExportSnapshotTuple> tableBuilder = ImmutableMap.builder();
                 @SuppressWarnings("unchecked")
                 final Iterator<String> partitionKeys = tableSequenceNumbers.keys();
                 while (partitionKeys.hasNext()) {
@@ -194,7 +243,8 @@ public class SnapshotCompletionMonitor {
                     JSONObject sequenceNumbers = tableSequenceNumbers.getJSONObject(partitionString);
                     final Long ackOffset = sequenceNumbers.getLong("ackOffset");
                     final Long sequenceNumber = sequenceNumbers.getLong("sequenceNumber");
-                    tableBuilder.put(partitionId, Pair.of(ackOffset, sequenceNumber));
+                    final Long generationId = sequenceNumbers.getLong("generationId");
+                    tableBuilder.put(partitionId, new ExportSnapshotTuple(ackOffset, sequenceNumber, generationId));
                 }
                 builder.put(tableName, tableBuilder.build());
             }

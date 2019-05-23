@@ -1207,12 +1207,14 @@ SHAREDLIB_JNIEXPORT jlongArray JNICALL Java_org_voltdb_jni_ExecutionEngine_nativ
     std::string streamNameStr(reinterpret_cast<char *>(streamNameChars), env->GetArrayLength(streamName));
     env->ReleaseByteArrayElements(streamName, streamNameChars, JNI_ABORT);
     try {
-        jlong data[2];
+        jlong data[3];
         size_t ackOffset;
         int64_t seqNo;
-        engine->getUSOForExportTable(ackOffset, seqNo, streamNameStr);
+        int64_t generationId;
+        engine->getUSOForExportTable(ackOffset, seqNo, generationId, streamNameStr);
         data[0] = ackOffset;
         data[1] = seqNo;
+        data[2] = generationId;
         jlongArray retval = env->NewLongArray(2);
         env->SetLongArrayRegion(retval, 0, 2, data);
         return retval;

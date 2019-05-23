@@ -2691,11 +2691,12 @@ int32_t VoltDBEngine::deleteMigratedRows(int64_t txnId, int64_t spHandle, int64_
     return 0;
 }
 
-void VoltDBEngine::getUSOForExportTable(size_t &ackOffset, int64_t &seqNo, std::string streamName) {
+void VoltDBEngine::getUSOForExportTable(size_t &ackOffset, int64_t &seqNo, int64_t &genId, std::string streamName) {
 
     // defaults mean failure
     ackOffset = 0;
     seqNo = -1;
+    genId = 0;
 
     std::map<std::string, StreamedTable*>::iterator pos = m_exportingTables.find(streamName);
 
@@ -2705,7 +2706,7 @@ void VoltDBEngine::getUSOForExportTable(size_t &ackOffset, int64_t &seqNo, std::
     }
 
     Table *table_for_el = pos->second;
-    table_for_el->getExportStreamPositions(seqNo, ackOffset);
+    table_for_el->getExportStreamPositions(seqNo, ackOffset, genId);
     return;
 }
 

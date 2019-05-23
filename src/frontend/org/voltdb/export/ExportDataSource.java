@@ -156,11 +156,10 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
     // This flag is specifically added for XDCR conflicts stream, which export conflict logs
     // on every host. Every data source with this flag set to true is an export master.
     private boolean m_runEveryWhere = false;
-    // *Generation Id* is actually a timestamp generated during catalog update(UpdateApplicationBase.java)
-    // genId in this class represents the genId of the most recent pushed buffer. If a new buffer contains
-    // different genId than the previous value, the new buffer needs to be written to new PBD segment.
-    //
-    private long m_previousGenId;
+    // *Generation ID* is actually a timestamp generated during catalog update(UpdateApplicationBase.java)
+    // If a catalog update occurs, the generation ID will be updated and a new buffer needs to be
+    // written to new PBD segment.
+    private long m_generationId;
 
     private ExportSequenceNumberTracker m_gapTracker = new ExportSequenceNumberTracker();
 
@@ -251,7 +250,6 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
             String overflowPath
             ) throws IOException
     {
-        m_previousGenId = genId;
         m_generation = generation;
         m_catalogVersionCreated = m_generation == null ? 0 : m_generation.getCatalogVersion();
         m_format = ExportFormat.SEVENDOTX;
@@ -262,7 +260,7 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
         m_committedBuffers = new StreamBlockQueue(overflowPath, nonce, m_tableName);
         m_gapTracker = m_committedBuffers.scanForGap();
         // Pretend it's rejoin so we set first unpolled to a safe place
-        resetStateInRejoinOrRecover(0L, true);
+        resetStateInRejoinOrRecover(0L, genId, true);
 
         /*
          * This is not the catalog relativeIndex(). This ID incorporates
@@ -351,7 +349,6 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
             List<Pair<Integer, Integer>> localPartitionsToSites,
             final ExportDataProcessor processor,
             final long genId) throws IOException {
-        m_previousGenId = genId;
         m_generation = generation;
         m_catalogVersionCreated = m_generation == null ? 0 : m_generation.getCatalogVersion();
         m_adFile = adFile;
@@ -408,7 +405,7 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
         m_gapTracker = m_committedBuffers.scanForGap();
 
         // Pretend it's rejoin so we set first unpolled to a safe place
-        resetStateInRejoinOrRecover(0L, true);
+        resetStateInRejoinOrRecover(0L, genId, true);
         if (exportLog.isDebugEnabled()) {
             exportLog.debug(toString() + " at AD file reads gap tracker from PBD:" + m_gapTracker.toString());
         }
@@ -869,7 +866,7 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
         }
     }
 
-    public ListenableFuture<?> truncateExportToSeqNo(boolean isRecover, boolean isRejoin, long sequenceNumber) {
+    public ListenableFuture<?> truncateExportToSeqNo(boolean isRecover, boolean isRejoin, long sequenceNumber, long generationId) {
         return m_es.submit(new Runnable() {
             @Override
             public void run() {
@@ -890,7 +887,7 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
                         }
                     }
                     // Need to update pending tuples in rejoin
-                    resetStateInRejoinOrRecover(sequenceNumber, isRejoin);
+                    resetStateInRejoinOrRecover(sequenceNumber, generationId, isRejoin);
                     // Need to handle drained source if truncate emptied the buffers
                     // Note, this always happen before the first poll
                     handleDrainedSource(null);
@@ -1616,7 +1613,7 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
     // in snapshot to find where to poll next buffer. The right thing to do should be setting
     // the firstUnpolled to a safe point in case of releasing a gap prematurely, waits for
     // current master to tell us where to poll next buffer.
-    private void resetStateInRejoinOrRecover(long initialSequenceNumber, boolean isRejoin) {
+    private void resetStateInRejoinOrRecover(long initialSequenceNumber, long genId, boolean isRejoin) {
         if (isRejoin) {
             if (!m_gapTracker.isEmpty()) {
                 m_lastReleasedSeqNo = Math.max(m_lastReleasedSeqNo, m_gapTracker.getFirstSeqNo() - 1);
@@ -1627,11 +1624,12 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
         // Rejoin or recovery should be on a transaction boundary (except maybe in a gap situation)
         m_committedSeqNo = m_lastReleasedSeqNo;
         m_firstUnpolledSeqNo =  m_lastReleasedSeqNo + 1;
+        m_generationId = genId;
         m_tuplesPending.set(m_gapTracker.sizeInSequence());
         if (exportLog.isDebugEnabled()) {
             exportLog.debug("Reset state in " + (isRejoin ? "REJOIN" : "RECOVER")
                     + ", initial seqNo " + initialSequenceNumber + ", last released/committed " + m_lastReleasedSeqNo
-                    + ", first unpolled " + m_firstUnpolledSeqNo);
+                    + ", first unpolled " + m_firstUnpolledSeqNo + ", generation ID " + m_generationId);
         }
     }
 
@@ -1733,13 +1731,13 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
 
     public void updateCatalog(Table table, long genId) {
         // Skip unneeded catalog update
-        if (m_previousGenId >= genId || m_closed) {
+        if (m_generationId >= genId || m_closed) {
             return;
         }
         m_es.execute(new Runnable() {
             @Override
             public void run() {
-                if (m_previousGenId < genId) {
+                if (m_generationId < genId) {
                     // This serializer is used to write stream schema to pbd
                     StreamTableSchemaSerializer ds = new StreamTableSchemaSerializer(table, table.getTypeName(), genId);
                     try {
@@ -1747,7 +1745,7 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
                     } catch (IOException e) {
                         VoltDB.crashLocalVoltDB("Unable to write PBD export header.", true, e);
                     }
-                    m_previousGenId = genId;
+                    m_generationId = genId;
                 }
             }
         });
@@ -1885,7 +1883,7 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
 
     // This is called when schema update doesn't affect export
     public void updateGenerationId(long genId) {
-        m_previousGenId = genId;
+        m_generationId = genId;
     }
 
     // Called from {@code ExportCoordinator}, returns duplicate of tracker
