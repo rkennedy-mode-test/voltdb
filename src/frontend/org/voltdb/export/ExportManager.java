@@ -625,7 +625,6 @@ public class ExportManager
             long committedSequenceNumber,
             long tupleCount,
             long uniqueId,
-            long genId,
             long bufferPtr,
             ByteBuffer buffer) {
         //For validating that the memory is released
@@ -641,7 +640,7 @@ public class ExportManager
             }
             generation.pushExportBuffer(partitionId, tableName,
                     startSequenceNumber, committedSequenceNumber,
-                    (int)tupleCount, uniqueId, genId, buffer);
+                    (int)tupleCount, uniqueId, buffer);
         } catch (Exception e) {
             //Don't let anything take down the execution site thread
             exportLog.error("Error pushing export buffer", e);

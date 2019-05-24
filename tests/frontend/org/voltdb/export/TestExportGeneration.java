@@ -50,7 +50,6 @@ import org.hamcrest.Matcher;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.voltcore.messaging.BinaryPayloadMessage;
 import org.voltcore.messaging.VoltMessage;
@@ -269,7 +268,6 @@ public class TestExportGeneration {
                     seqNo,
                     1,
                     0L,
-                    System.currentTimeMillis(),
                     foo.duplicate()
                     );
             AckingContainer cont = (AckingContainer)m_expDs.poll(false).get();
@@ -300,7 +298,6 @@ public class TestExportGeneration {
                 1L,
                 1,
                 0L,
-                System.currentTimeMillis(),
                 foo.duplicate()
                 );
 
@@ -337,7 +334,6 @@ public class TestExportGeneration {
     }
 
     @Test
-    @Ignore
     public void testStaleAckDelivery() throws Exception {
         ByteBuffer foo = ByteBuffer.allocate(20 + StreamBlock.HEADER_SIZE);
 
@@ -351,7 +347,6 @@ public class TestExportGeneration {
                 1L,
                 1,
                 0L,
-                System.currentTimeMillis(),
                 foo.duplicate()
                 );
 
@@ -376,7 +371,7 @@ public class TestExportGeneration {
                 hsid,
                 new AckPayloadMessage(m_part,
                         m_streamName, 1L,
-                        m_expDs.getCatalogVersionCreated() - 1) // stale catalogVersion
+                        m_expDs.getGenerationIdCreated() - 1) // stale catalogVersion
                     .asVoltMessage()
                 );
 

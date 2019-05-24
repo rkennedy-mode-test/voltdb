@@ -443,7 +443,6 @@ public class ExecutionEngineIPC extends ExecutionEngine {
                     long committedSequenceNumber = getBytes(8).getLong();
                     long tupleCount = getBytes(8).getLong();
                     long uniqueId = getBytes(8).getLong();
-                    long genId = getBytes(8).getLong();
                     int length = getBytes(4).getInt();
                     ExportManager.pushExportBuffer(
                             partitionId,
@@ -452,7 +451,6 @@ public class ExecutionEngineIPC extends ExecutionEngine {
                             committedSequenceNumber,
                             tupleCount,
                             uniqueId,
-                            genId,
                             0,
                             length == 0 ? null : getBytes(length));
                 }

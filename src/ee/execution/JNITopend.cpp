@@ -536,8 +536,7 @@ JNITopend::~JNITopend() {
 void JNITopend::pushExportBuffer(
         int32_t partitionId,
         string tableName,
-        ExportStreamBlock *block,
-        int64_t generationId) {
+        ExportStreamBlock *block) {
     jstring tableNameString = m_jniEnv->NewStringUTF(tableName.c_str());
 
     if (block != NULL) {
@@ -555,7 +554,6 @@ void JNITopend::pushExportBuffer(
                 block->getCommittedSequenceNumber(),
                 block->getRowCount(),
                 block->lastSpUniqueId(),
-                generationId,
                 reinterpret_cast<jlong>(block->rawPtr()),
                 buffer);
         m_jniEnv->DeleteLocalRef(buffer);
@@ -569,7 +567,6 @@ void JNITopend::pushExportBuffer(
                 static_cast<int64_t>(0),
                 static_cast<int64_t>(0),
                 static_cast<int64_t>(0),
-                generationId,
                 NULL,
                 NULL);
     }

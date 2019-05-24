@@ -358,11 +358,20 @@ public class ExportGeneration implements Generation {
 
                         if (msgType == ExportManager.RELEASE_BUFFER) {
                             final long seqNo = buf.getLong();
-                            final long catalogVersion = buf.getInt();
+                            final long generationIdCreated = buf.getLong();
                             try {
+                                if (generationIdCreated < eds.getGenerationIdCreated()) {
+                                    if (exportLog.isDebugEnabled()) {
+                                        exportLog.debug("Ignoring staled RELEASE_BUFFER message for " + eds.toString() +
+                                                " , sequence number: " + seqNo + ", generationIdCreated: " + generationIdCreated +
+                                                " from " + CoreUtils.hsIdToString(message.m_sourceHSId) +
+                                                " to " + CoreUtils.hsIdToString(m_mbox.getHSId()));
+                                    }
+                                    return;
+                                }
                                 if (exportLog.isDebugEnabled()) {
                                     exportLog.debug("Received RELEASE_BUFFER message for " + eds.toString() +
-                                            " , sequence number: " + seqNo + ", catalogVersion: " + catalogVersion +
+                                            " , sequence number: " + seqNo + ", generationIdCreated: " + generationIdCreated +
                                             " from " + CoreUtils.hsIdToString(message.m_sourceHSId) +
                                             " to " + CoreUtils.hsIdToString(m_mbox.getHSId()));
                                 }
@@ -806,7 +815,7 @@ public class ExportGeneration implements Generation {
     @Override
     public void pushExportBuffer(int partitionId, String tableName,
             long startSequenceNumber, long committedSequenceNumber,
-            int tupleCount, long uniqueId, long genId, ByteBuffer buffer) {
+            int tupleCount, long uniqueId, ByteBuffer buffer) {
 
         Map<String, ExportDataSource> sources = m_dataSourcesByPartition.get(partitionId);
 
@@ -837,7 +846,7 @@ public class ExportGeneration implements Generation {
         }
 
         source.pushExportBuffer(startSequenceNumber, committedSequenceNumber,
-                tupleCount, uniqueId, genId, buffer);
+                tupleCount, uniqueId, buffer);
     }
 
     private void cleanup() {

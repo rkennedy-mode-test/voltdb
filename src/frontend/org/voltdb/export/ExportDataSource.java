@@ -100,7 +100,6 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
     private final String m_tableName;
     private final byte [] m_signatureBytes;
     private final int m_partitionId;
-    private final int m_catalogVersionCreated;
 
     // For stats
     private final int m_siteId;
@@ -160,6 +159,8 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
     // If a catalog update occurs, the generation ID will be updated and a new buffer needs to be
     // written to new PBD segment.
     private long m_generationId;
+    // This is the generation ID when the stream was initially created
+    private long m_generationIdCreated;
 
     private ExportSequenceNumberTracker m_gapTracker = new ExportSequenceNumberTracker();
 
@@ -251,7 +252,6 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
             ) throws IOException
     {
         m_generation = generation;
-        m_catalogVersionCreated = m_generation == null ? 0 : m_generation.getCatalogVersion();
         m_format = ExportFormat.SEVENDOTX;
         m_database = db;
         m_tableName = tableName;
@@ -350,7 +350,6 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
             final ExportDataProcessor processor,
             final long genId) throws IOException {
         m_generation = generation;
-        m_catalogVersionCreated = m_generation == null ? 0 : m_generation.getCatalogVersion();
         m_adFile = adFile;
         String overflowPath = adFile.getParent();
         byte data[] = Files.toByteArray(adFile);
@@ -468,12 +467,8 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
         return m_isInCatalog;
     }
 
-    public int getCatalogVersionCreated() {
-        return m_catalogVersionCreated;
-    }
-
-    private int getGenerationCatalogVersion() {
-        return m_generation == null ? 0 : m_generation.getCatalogVersion();
+    public long getGenerationIdCreated() {
+        return m_generationIdCreated;
     }
 
     // Package private as only used for tests
@@ -741,7 +736,6 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
             long committedSequenceNumber,
             int tupleCount,
             long uniqueId,
-            long genId,
             ByteBuffer buffer,
             boolean poll) throws Exception {
         final java.util.concurrent.atomic.AtomicBoolean deleted = new java.util.concurrent.atomic.AtomicBoolean(false);
@@ -827,7 +821,6 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
             final long committedSequenceNumber,
             final int tupleCount,
             final long uniqueId,
-            final long genId,
             final ByteBuffer buffer) {
         try {
             m_bufferPushPermits.acquire();
@@ -847,7 +840,7 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
                     try {
                         if (!m_closed) {
                             pushExportBufferImpl(startSequenceNumber, committedSequenceNumber,
-                                    tupleCount, uniqueId, genId, buffer, m_readyForPolling);
+                                    tupleCount, uniqueId, buffer, m_readyForPolling);
                         } else {
                             exportLogLimited.log("Closed: ignoring export buffer with " + tupleCount + " rows",
                                     EstTime.currentTimeMillis());
@@ -1334,7 +1327,7 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
         buf.putInt(m_signatureBytes.length);
         buf.put(m_signatureBytes);
         buf.putLong(m_committedSeqNo);
-        buf.putInt(getGenerationCatalogVersion());
+        buf.putLong(m_generationIdCreated);
 
         BinaryPayloadMessage bpm = new BinaryPayloadMessage(new byte[0], buf.array());
         return bpm;
@@ -1611,7 +1604,7 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
     // During rejoin it's possible that the stream is blocked by a gap before the export
     // sequence number carried by rejoin snapshot, so we couldn't trust the sequence number
     // in snapshot to find where to poll next buffer. The right thing to do should be setting
-    // the firstUnpolled to a safe point in case of releasing a gap prematurely, waits for
+    // the firstUnpolled to a safe point to avoid releasing a gap prematurely, waits for
     // current master to tell us where to poll next buffer.
     private void resetStateInRejoinOrRecover(long initialSequenceNumber, long genId, boolean isRejoin) {
         if (isRejoin) {
@@ -1625,11 +1618,12 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
         m_committedSeqNo = m_lastReleasedSeqNo;
         m_firstUnpolledSeqNo =  m_lastReleasedSeqNo + 1;
         m_generationId = genId;
+        m_generationIdCreated = genId;
         m_tuplesPending.set(m_gapTracker.sizeInSequence());
         if (exportLog.isDebugEnabled()) {
             exportLog.debug("Reset state in " + (isRejoin ? "REJOIN" : "RECOVER")
                     + ", initial seqNo " + initialSequenceNumber + ", last released/committed " + m_lastReleasedSeqNo
-                    + ", first unpolled " + m_firstUnpolledSeqNo + ", generation ID " + m_generationId);
+                    + ", first unpolled " + m_firstUnpolledSeqNo + ", generation ID " + genId);
         }
     }
 

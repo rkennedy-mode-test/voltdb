@@ -1125,6 +1125,7 @@ SHAREDLIB_JNIEXPORT jlong JNICALL Java_org_voltdb_jni_ExecutionEngine_nativeExpo
    jboolean syncAction,
    jlong ackOffset,
    jlong seqNo,
+   jlong genId,
    jbyteArray streamName) {
     VOLT_DEBUG("nativeExportAction in C++ called");
     VoltDBEngine *engine = castToEngine(engine_ptr);
@@ -1138,6 +1139,7 @@ SHAREDLIB_JNIEXPORT jlong JNICALL Java_org_voltdb_jni_ExecutionEngine_nativeExpo
             return engine->exportAction(syncAction,
                                         static_cast<int64_t>(ackOffset),
                                         static_cast<int64_t>(seqNo),
+                                        static_cast<int64_t>(genId),
                                         streamNameStr);
         } catch (const SQLException &e) {
             throwFatalException("%s", e.message().c_str());

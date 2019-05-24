@@ -48,7 +48,7 @@ public:
     virtual ~ExportTupleStream() {
     }
 
-    void setGeneration(int64_t generation);
+    void setGenerationIdCreated(int64_t generation);
 
     /** Read the total bytes used over the life of the stream */
     size_t bytesUsed() {
@@ -59,8 +59,8 @@ public:
         return m_nextSequenceNumber;
     }
 
-    int64_t getGenerationId() {
-        return m_generation;
+    int64_t getGenerationIdCreated() {
+        return m_generationIdCreated;
     }
 
     /** Set the total number of bytes used and starting sequence number for new buffer (for rejoin/recover) */
@@ -154,7 +154,8 @@ private:
     const CatalogId m_partitionId;
     const int64_t m_siteId;
 
-    int64_t m_generation;
+    // The creation timestamp of export stream, this value should survive through recovers and rejoins
+    int64_t m_generationIdCreated;
     const std::string m_tableName;
 
     int64_t m_nextSequenceNumber;
