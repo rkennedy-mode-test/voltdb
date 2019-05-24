@@ -860,15 +860,6 @@ void PersistentTable::doInsertTupleCommon(TableTuple& source, TableTuple& target
     TableTuple conflict(m_schema);
     try {
         tryInsertOnAllIndexes(&target, &conflict);
-
-        // from stream snapshot/rejoin, add it to migrating index
-        if (isTableWithMigrate(m_tableType)) {
-            assert(m_shadowStream != nullptr);
-            NValue txnId = target.getHiddenNValue(getMigrateColumnIndex());
-            if(!txnId.isNull()){
-               migratingAdd(ValuePeeker::peekBigInt(txnId), target);
-            }
-        }
     } catch (SQLException& e) {
         deleteTupleStorage(target); // also frees object columns
         throw;
@@ -889,6 +880,14 @@ void PersistentTable::doInsertTupleCommon(TableTuple& source, TableTuple& target
         target.setDirtyFalse();
     }
 
+    // from stream snapshot/rejoin, add it to migrating index
+    if (isTableWithMigrate(m_tableType)) {
+        assert(m_shadowStream != nullptr);
+        NValue txnId = target.getHiddenNValue(getMigrateColumnIndex());
+        if(!txnId.isNull()){
+            migratingAdd(ValuePeeker::peekBigInt(txnId), target);
+        }
+    }
 
     // this is skipped for inserts that are never expected to fail,
     // like some (initially, all) cases of tuple migration on schema change
