@@ -1217,8 +1217,8 @@ SHAREDLIB_JNIEXPORT jlongArray JNICALL Java_org_voltdb_jni_ExecutionEngine_nativ
         data[0] = ackOffset;
         data[1] = seqNo;
         data[2] = generationId;
-        jlongArray retval = env->NewLongArray(2);
-        env->SetLongArrayRegion(retval, 0, 2, data);
+        jlongArray retval = env->NewLongArray(3);
+        env->SetLongArrayRegion(retval, 0, 3, data);
         return retval;
     }
     catch (const FatalException &e) {

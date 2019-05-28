@@ -1398,8 +1398,8 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
 
     private int getAckMessageLength() {
         // msg type(1) + partition:int(4) + length:int(4) +
-        // signaturesBytes.length + ackUSO:long(8) + catalogVersion:int(4).
-        final int msgLen = 1 + 4 + 4 + m_signatureBytes.length + 8 + 4;
+        // signaturesBytes.length + ackUSO:long(8) + genIdCreated:long(8).
+        final int msgLen = 1 + 4 + 4 + m_signatureBytes.length + 8 + 8;
         return msgLen;
     }
 

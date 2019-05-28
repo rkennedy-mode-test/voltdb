@@ -154,7 +154,7 @@ private:
     const CatalogId m_partitionId;
     const int64_t m_siteId;
 
-    // The creation timestamp of export stream, this value should survive through recovers and rejoins
+    // The creation timestamp of export stream, this value should weather recovers and rejoins
     int64_t m_generationIdCreated;
     const std::string m_tableName;
 

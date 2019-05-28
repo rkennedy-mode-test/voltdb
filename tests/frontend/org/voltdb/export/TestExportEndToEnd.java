@@ -46,18 +46,22 @@ public class TestExportEndToEnd extends ExportLocalClusterBase {
     private LocalCluster m_cluster;
 
     private static int KFACTOR = 1;
-    private static final String SCHEMA =
+    private static int HOST_COUNT = 3;
+    private static int SPH = 2;
+    private static final String T1_SCHEMA =
             "CREATE STREAM t_1 "
             + "PARTITION ON COLUMN a "
             + "EXPORT TO TARGET export_target_a ("
             + "     a integer not null, "
             + "     b integer not null"
-            + ");"
-            + "CREATE STREAM t_2 "
-            + "EXPORT TO TARGET export_target_b ("
-            + "     a integer not null, "
-            + "     b integer not null"
             + ");";
+
+    private static final String T2_SCHEMA =
+                "CREATE STREAM t_2 "
+                + "EXPORT TO TARGET export_target_b ("
+                + "     a integer not null, "
+                + "     b integer not null"
+                + ");";
 
     @Before
     public void setUp() throws Exception
@@ -67,7 +71,8 @@ public class TestExportEndToEnd extends ExportLocalClusterBase {
 
         VoltProjectBuilder builder = null;
         builder = new VoltProjectBuilder();
-        builder.addLiteralSchema(SCHEMA);
+        builder.addLiteralSchema(T1_SCHEMA);
+        builder.addLiteralSchema(T2_SCHEMA);
         builder.setUseDDLSchema(true);
         builder.setPartitionDetectionEnabled(true);
         builder.setDeadHostTimeout(30);
@@ -83,7 +88,7 @@ public class TestExportEndToEnd extends ExportLocalClusterBase {
         // Start socket exporter client
         startListener();
 
-        m_cluster = new LocalCluster("testFlushExportBuffer.jar", 2, 2, KFACTOR, BackendTarget.NATIVE_EE_JNI);
+        m_cluster = new LocalCluster("testFlushExportBuffer.jar", SPH, HOST_COUNT, KFACTOR, BackendTarget.NATIVE_EE_JNI);
         m_cluster.setNewCli(true);
         m_cluster.setHasLocalServer(false);
         m_cluster.overrideAnyRequestForValgrind();
@@ -128,9 +133,42 @@ public class TestExportEndToEnd extends ExportLocalClusterBase {
 
         // rejoin node back
         m_cluster.rejoinOne(1);
-
         client.drain();
+
+        client = getClient(m_cluster);
         TestExportBaseSocketExport.waitForStreamedTargetAllocatedMemoryZero(client);
         assertEquals(2, m_cluster.getLiveNodeCount());
+    }
+
+    @Test
+    public void testExportRollingRejoinPlusDropAndRecreateStream() throws Exception
+    {
+        Client client = getClient(m_cluster);
+        // Generate PBD files
+        Object[] data = new Object[3];
+        Arrays.fill(data, 1);
+        insertToStream("t_1", 0, 100, client, data);
+
+        for (int hostId = 0; hostId < m_cluster.getLiveNodeCount(); hostId++) {
+            // kill one node
+            m_cluster.killSingleHost(hostId);
+
+            // drop stream
+            ClientResponse response = client.callProcedure("@AdHoc", "DROP STREAM t_1");
+            assertEquals(ClientResponse.SUCCESS, response.getStatus());
+            response = client.callProcedure("@AdHoc", T1_SCHEMA);
+            assertEquals(ClientResponse.SUCCESS, response.getStatus());
+
+            insertToStream("t_1", 0, 100, client, data);
+            client.drain();
+            // rejoin node back
+            m_cluster.rejoinOne(hostId);
+
+            client = getClient(m_cluster);
+            insertToStream("t_1", 0, 100, client, data);
+        }
+        client.drain();
+        TestExportBaseSocketExport.waitForStreamedTargetAllocatedMemoryZero(client);
+        m_verifier.verifyRows();
     }
 }
