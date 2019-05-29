@@ -1355,6 +1355,7 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
             if (exportLog.isDebugEnabled()) {
                 exportLog.debug("Send RELEASE_BUFFER to " + toString()
                         + " with sequence number " + m_committedSeqNo
+                        + ", generation ID " + m_generationIdCreated
                         + " from " + CoreUtils.hsIdToString(mbx.getHSId())
                         + " to " + CoreUtils.hsIdCollectionToString(p.getSecond()));
             }
@@ -1388,6 +1389,7 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
                     if (exportLog.isDebugEnabled()) {
                         exportLog.debug("Send RELEASE_BUFFER to " + toString()
                                 + " with sequence number " + m_committedSeqNo
+                                + ", generation ID " + m_generationIdCreated
                                 + " from " + CoreUtils.hsIdToString(mbx.getHSId())
                                 + " to " + CoreUtils.hsIdCollectionToString(newReplicas));
                     }
@@ -1587,7 +1589,7 @@ public class ExportDataSource implements Comparable<ExportDataSource> {
                 .append(getTableName())
                 .append(" partition ")
                 .append(getPartitionId())
-                .append("(")
+                .append(" (")
                 .append(m_status)
                 ;
         if (m_coordinator != null) {

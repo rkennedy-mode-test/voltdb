@@ -27,12 +27,15 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Map.Entry;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.voltdb.BackendTarget;
+import org.voltdb.VoltTable;
 import org.voltdb.client.Client;
 import org.voltdb.client.ClientResponse;
 import org.voltdb.compiler.VoltProjectBuilder;
@@ -40,6 +43,8 @@ import org.voltdb.compiler.deploymentfile.ServerExportEnum;
 import org.voltdb.export.TestExportBaseSocketExport.ServerListener;
 import org.voltdb.regressionsuites.LocalCluster;
 import org.voltdb.utils.VoltFile;
+
+import com.google_voltpatches.common.collect.Maps;
 
 public class TestExportEndToEnd extends ExportLocalClusterBase {
 
@@ -141,34 +146,57 @@ public class TestExportEndToEnd extends ExportLocalClusterBase {
     }
 
     @Test
-    public void testExportRollingRejoinPlusDropAndRecreateStream() throws Exception
+    @Ignore
+    public void testExportRejoinOldGenerationStream_ENG_16239() throws Exception
     {
         Client client = getClient(m_cluster);
         // Generate PBD files
         Object[] data = new Object[3];
         Arrays.fill(data, 1);
-        insertToStream("t_1", 0, 100, client, data);
+        int pkeyStart = 0;
+        insertToStream("t_1", pkeyStart, 1000, client, data);
 
-        for (int hostId = 0; hostId < m_cluster.getLiveNodeCount(); hostId++) {
-            // kill one node
-            m_cluster.killSingleHost(hostId);
-
-            // drop stream
-            ClientResponse response = client.callProcedure("@AdHoc", "DROP STREAM t_1");
-            assertEquals(ClientResponse.SUCCESS, response.getStatus());
-            response = client.callProcedure("@AdHoc", T1_SCHEMA);
-            assertEquals(ClientResponse.SUCCESS, response.getStatus());
-
-            insertToStream("t_1", 0, 100, client, data);
-            client.drain();
-            // rejoin node back
-            m_cluster.rejoinOne(hostId);
-
-            client = getClient(m_cluster);
-            insertToStream("t_1", 0, 100, client, data);
-        }
+        // Write some data to PBD then kill one node
         client.drain();
+        client.callProcedure("@Quiesce");
+        m_cluster.killSingleHost(0);
+
+        // drop stream
+        ClientResponse response = client.callProcedure("@AdHoc", "DROP STREAM t_1");
+        assertEquals(ClientResponse.SUCCESS, response.getStatus());
+        response = client.callProcedure("@AdHoc", T1_SCHEMA);
+        assertEquals(ClientResponse.SUCCESS, response.getStatus());
+
+        pkeyStart = 1000;
+        insertToStream("t_1", pkeyStart, 100, client, data);
+        client.drain();
+        // rejoin node back
+        m_cluster.rejoinOne(0);
+
+        client = getClient(m_cluster);
+        client.drain();
+        client.callProcedure("@Quiesce");
         TestExportBaseSocketExport.waitForStreamedTargetAllocatedMemoryZero(client);
-        m_verifier.verifyRows();
+        // make sure no partition has more than active stream
+        VoltTable stats = client.callProcedure("@Statistics", "export", 0).getResults()[0];
+        Map<String, Integer> masterCounters = Maps.newHashMap();
+        while (stats.advanceRow()) {
+            String target = stats.getString("TARGET");
+            String ttable = stats.getString("SOURCE");
+            String isMaster = stats.getString("ACTIVE");
+            Long pid = stats.getLong("PARTITION_ID");
+            String key = "TARGET: " + target + " SOURCE: " + ttable + " PARTITION_ID: " + pid + " ACTIVE: " + isMaster;
+            Integer count = masterCounters.get(key);
+            if (count == null) {
+                masterCounters.put(key, 1);
+            } else {
+                masterCounters.put(key, count + 1);
+            }
+        }
+        for (Entry<String, Integer> e : masterCounters.entrySet()) {
+            if (e.getValue() > 1) {
+                assertEquals("Stream (" + e.getKey() + ") has more than one master", 1, (int)e.getValue());
+            }
+        }
     }
 }
