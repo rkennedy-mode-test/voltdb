@@ -203,6 +203,11 @@ public class MpRoSite implements Runnable, SiteProcedureConnection
         }
 
         @Override
+        public long getGenerationId() {
+            return m_context.m_genId;
+        }
+
+        @Override
         public SiteTracker getSiteTrackerForSnapshot() {
             throw new RuntimeException("Not needed for RO MP Site, shouldn't be here.");
         }

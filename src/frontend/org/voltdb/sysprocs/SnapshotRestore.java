@@ -1077,7 +1077,7 @@ public class SnapshotRestore extends VoltSystemProcedure {
         DigestScanResult digestScanResult = null;
         try {
             // Digest scan.
-            digestScanResult = performRestoreDigestScanWork(isRecover);
+            digestScanResult = performRestoreDigestScanWork(ctx, isRecover);
 
             if (!isRecover || digestScanResult.perPartitionTxnIds.length == 0) {
                 digestScanResult.perPartitionTxnIds = new long[] {
@@ -1617,7 +1617,7 @@ public class SnapshotRestore extends VoltSystemProcedure {
         long drVersion;
     }
 
-    private final DigestScanResult performRestoreDigestScanWork(boolean isRecover)
+    private final DigestScanResult performRestoreDigestScanWork(SystemProcedureExecutionContext ctx, boolean isRecover)
     {
         // This fragment causes each execution site to confirm the likely
         // success of writing tables to disk
@@ -1730,7 +1730,7 @@ public class SnapshotRestore extends VoltSystemProcedure {
                                         " are reset to 0");
                                 warningLogged = true;
                             }
-                            long genId = 0;
+                            long genId = ctx.getGenerationId();
                             // Snapshots didn't save export generation id pre-9.1
                             if (obj.has(ExtensibleSnapshotDigestData.EXPORT_GENERATION_ID)) {
                                 genId = obj.getLong(ExtensibleSnapshotDigestData.EXPORT_GENERATION_ID);
@@ -1738,8 +1738,8 @@ public class SnapshotRestore extends VoltSystemProcedure {
                                 SNAP_LOG.warn("Could not find export generation ID in snapshot. " +
                                         "This warning is safe to ignore if you are loading a pre 9.1 snapshot" +
                                         " which would not contain these generation IDs (added in 9.1)." +
-                                        " If this is a post 9.1 snapshot then the restore has failed and export USOs " +
-                                        " are reset to 0");
+                                        " If this is a post 9.1 snapshot then the restore has failed and initial export" +
+                                        " generation ID are reset to current generation ID.");
                                 warningLogged = true;
                             }
                             partitionSequenceNumbers.put(partition, new ExportSnapshotTuple(uso, sequenceNumber, genId));

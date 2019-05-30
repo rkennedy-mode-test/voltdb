@@ -353,6 +353,11 @@ public class Site implements Runnable, SiteProcedureConnection, SiteSnapshotConn
         }
 
         @Override
+        public long getGenerationId() {
+            return m_context.m_genId;
+        }
+
+        @Override
         public byte[] getCatalogHash() {
             return m_context.getCatalogHash();
         }
