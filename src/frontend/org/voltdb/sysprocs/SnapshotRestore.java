@@ -1713,10 +1713,10 @@ public class SnapshotRestore extends VoltSystemProcedure {
                          * Array of objects containing partition and sequence number pairs
                          */
                         JSONArray sourcePartitionSequenceNumbers =
-                                tableSequenceNumbers.getJSONArray(ExtensibleSnapshotDigestData.SEQUENCE_NUM_PER_PARTITION);
+                                tableSequenceNumbers.getJSONArray(ExtensibleSnapshotDigestData.EXPORT_SEQUENCE_NUM_PER_PARTITION);
                         for (int zz = 0; zz < sourcePartitionSequenceNumbers.length(); zz++) {
                             JSONObject obj = sourcePartitionSequenceNumbers.getJSONObject(zz);
-                            int partition = obj.getInt(ExtensibleSnapshotDigestData.PARTITION);
+                            int partition = obj.getInt(ExtensibleSnapshotDigestData.EXPORT_PARTITION);
                             long sequenceNumber = obj.getInt(ExtensibleSnapshotDigestData.EXPORT_SEQUENCE_NUMBER);
                             long uso = 0;
                             // Snapshots didn't save export USOs pre-8.1
@@ -1807,8 +1807,8 @@ public class SnapshotRestore extends VoltSystemProcedure {
 
     private void externalStreamsStatesFromDigest(JSONObject digest, Set<Integer> disabledStreams)
             throws JSONException {
-        if (digest.has(ExtensibleSnapshotDigestData.DISABLED_EXTERNAL_STREAMS)) {
-            JSONArray disabledStreamsJson = digest.getJSONArray(ExtensibleSnapshotDigestData.DISABLED_EXTERNAL_STREAMS);
+        if (digest.has(ExtensibleSnapshotDigestData.EXPORT_DISABLED_EXTERNAL_STREAMS)) {
+            JSONArray disabledStreamsJson = digest.getJSONArray(ExtensibleSnapshotDigestData.EXPORT_DISABLED_EXTERNAL_STREAMS);
             for (int i=0; i<disabledStreamsJson.length(); i++) {
                 disabledStreams.add(disabledStreamsJson.getInt(i));
             }

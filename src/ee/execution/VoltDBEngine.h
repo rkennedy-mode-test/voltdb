@@ -493,11 +493,11 @@ class __attribute__((visibility("default"))) VoltDBEngine {
         /**
          * Perform an action on behalf of Export.
          *
-         * @param if syncAction is true, the stream offset being set for a table
-         * @param the reference to the USO of the next row inserted in the stream
-         * @param the reference to the sequenceNumber of the next inserted row
-         * @param the reference to the initial creation generation ID of the export stream
-         * @param the name of the stream we want to update the state for
+         * @param syncAction if syncAction is true, the stream offset being set for a table
+         * @param ackOffset the reference to the USO of the next row inserted in the stream
+         * @param seqNo the reference to the sequenceNumber of the next inserted row
+         * @param generationIdCreated the reference to the initial creation generation ID of the export stream
+         * @param streamName the name of the stream we want to update the state for
          * @return the universal offset for any poll results
          * (results returned separately via QueryResults buffer)
          */

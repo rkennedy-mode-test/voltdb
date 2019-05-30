@@ -226,7 +226,7 @@ public class SnapshotCompletionMonitor {
              * table and partition to a regular map
              */
             Map<String, Map<Integer, ExportSnapshotTuple>> exportSequenceNumbers = null;
-            final JSONObject exportSequenceJSON = jsonObj.getJSONObject("exportSequenceNumbers");
+            final JSONObject exportSequenceJSON = jsonObj.getJSONObject(ExtensibleSnapshotDigestData.EXPORT_SEQUENCE_NUMBER_ARR);
             final ImmutableMap.Builder<String, Map<Integer, ExportSnapshotTuple>> builder =
                     ImmutableMap.builder();
             @SuppressWarnings("unchecked")
@@ -241,25 +241,25 @@ public class SnapshotCompletionMonitor {
                     final String partitionString = partitionKeys.next();
                     final Integer partitionId = Integer.valueOf(partitionString);
                     JSONObject sequenceNumbers = tableSequenceNumbers.getJSONObject(partitionString);
-                    final Long ackOffset = sequenceNumbers.getLong("ackOffset");
-                    final Long sequenceNumber = sequenceNumbers.getLong("sequenceNumber");
-                    final Long generationId = sequenceNumbers.getLong("generationId");
+                    final Long ackOffset = sequenceNumbers.getLong(ExtensibleSnapshotDigestData.EXPORT_MERGED_USO);
+                    final Long sequenceNumber = sequenceNumbers.getLong(ExtensibleSnapshotDigestData.EXPORT_MERGED_SEQNO);
+                    final Long generationId = sequenceNumbers.getLong(ExtensibleSnapshotDigestData.EXPORT_MERGED_GENERATION_ID);
                     tableBuilder.put(partitionId, new ExportSnapshotTuple(ackOffset, sequenceNumber, generationId));
                 }
                 builder.put(tableName, tableBuilder.build());
             }
             exportSequenceNumbers = builder.build();
 
-            long clusterCreateTime = jsonObj.optLong("clusterCreateTime", -1);
+            long clusterCreateTime = jsonObj.optLong(ExtensibleSnapshotDigestData.DR_CLUSTER_CREATION_TIME, -1);
             Map<Integer, Long> drSequenceNumbers = new HashMap<>();
-            JSONObject drTupleStreamJSON = jsonObj.getJSONObject("drTupleStreamStateInfo");
+            JSONObject drTupleStreamJSON = jsonObj.getJSONObject(ExtensibleSnapshotDigestData.DR_TUPLE_STREAM_STATE_INFO);
             Iterator<String> partitionKeys = drTupleStreamJSON.keys();
             int drVersion = 0;
             while (partitionKeys.hasNext()) {
                 String partitionIdString = partitionKeys.next();
                 JSONObject stateInfo = drTupleStreamJSON.getJSONObject(partitionIdString);
-                drVersion = (int)stateInfo.getLong("drVersion");
-                drSequenceNumbers.put(Integer.valueOf(partitionIdString), stateInfo.getLong("sequenceNumber"));
+                drVersion = (int)stateInfo.getLong(ExtensibleSnapshotDigestData.DR_VERSION);
+                drSequenceNumbers.put(Integer.valueOf(partitionIdString), stateInfo.getLong(ExtensibleSnapshotDigestData.DR_ID));
             }
 
             Map<Integer, Long> partitionTxnIdsMap = ImmutableMap.of();
@@ -276,7 +276,7 @@ public class SnapshotCompletionMonitor {
              * data
              */
             Map<Integer, Map<Integer, Map<Integer, DRSiteDrIdTracker>>> drMixedClusterSizeConsumerState = new HashMap<>();
-            JSONObject consumerPartitions = jsonObj.getJSONObject("drMixedClusterSizeConsumerState");
+            JSONObject consumerPartitions = jsonObj.getJSONObject(ExtensibleSnapshotDigestData.DR_MIXED_CLUSTER_SIZE_CONSUMER_STATE);
             Iterator<String> cpKeys = consumerPartitions.keys();
             while (cpKeys.hasNext()) {
                 final String consumerPartitionIdStr = cpKeys.next();

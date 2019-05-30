@@ -362,7 +362,7 @@ public class ExportGeneration implements Generation {
                             try {
                                 if (generationIdCreated < eds.getGenerationIdCreated()) {
                                     if (exportLog.isDebugEnabled()) {
-                                        exportLog.debug("Ignoring staled RELEASE_BUFFER message for " + eds.toString() +
+                                        exportLog.debug("Ignored staled RELEASE_BUFFER message for " + eds.toString() +
                                                 " , sequence number: " + seqNo + ", generationIdCreated: " + generationIdCreated +
                                                 " from " + CoreUtils.hsIdToString(message.m_sourceHSId) +
                                                 " to " + CoreUtils.hsIdToString(m_mbox.getHSId()));
