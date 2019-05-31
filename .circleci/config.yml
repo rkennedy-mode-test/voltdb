@@ -5,8 +5,7 @@ jobs:
     machine:
       image: ubuntu-1604:201903-01
     steps:
-      - run: apt-get update
-      - run: apt-get install -y openjdk-8-jdk-headless ant build-essential cmake python git
+      - run: sudo apt-get update && apt-get install -y openjdk-8-jdk-headless ant build-essential cmake python git
       - checkout
       - run: ant
       - persist_to_workspace:
