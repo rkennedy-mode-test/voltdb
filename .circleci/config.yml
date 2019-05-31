@@ -13,7 +13,7 @@ jobs:
           root: .
           paths:
             - voltdb
-            - obj/release/test
+            - obj
   junit_regression_h1:
     docker:
       - image: ubuntu:16.04
