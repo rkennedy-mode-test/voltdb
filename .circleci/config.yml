@@ -1,0 +1,104 @@
+version: 2
+
+jobs:
+  build:
+    docker:
+      - image: ubuntu:16.04
+    steps:
+      - run: apt-get update
+      - run: apt-get install -y openjdk-8-jdk-headless ant build-essential cmake python git
+      - checkout
+      - run: ant
+    persist_to_workspace:
+      root: .
+      paths:
+        - voltdb
+        - obj/release/test
+  junit_regression_h1:
+    docker:
+      - image: ubuntu:16.04
+    steps:
+      - run: apt-get update
+      - run: apt-get install -y openjdk-8-jdk-headless ant build-essential cmake python git
+      - checkout
+      - run: ant junit_regression_h1
+  junit_regression_h2:
+    docker:
+      - image: ubuntu:16.04
+    steps:
+      - run: apt-get update
+      - run: apt-get install -y openjdk-8-jdk-headless ant build-essential cmake python git
+      - checkout
+      - run: ant junit_regression_h2
+  junit_other_p1:
+    docker:
+      - image: ubuntu:16.04
+    steps:
+      - run: apt-get update
+      - run: apt-get install -y openjdk-8-jdk-headless ant build-essential cmake python git
+      - checkout
+      - run: ant junit_other_p1
+  junit_other_p2:
+    docker:
+      - image: ubuntu:16.04
+    steps:
+      - run: apt-get update
+      - run: apt-get install -y openjdk-8-jdk-headless ant build-essential cmake python git
+      - checkout
+      - run: ant junit_other_p2
+  junit_other_p3:
+    docker:
+      - image: ubuntu:16.04
+    steps:
+      - run: apt-get update
+      - run: apt-get install -y openjdk-8-jdk-headless ant build-essential cmake python git
+      - checkout
+      - run: ant junit_other_p3
+  junit_other_p4:
+    docker:
+      - image: ubuntu:16.04
+    steps:
+      - run: apt-get update
+      - run: apt-get install -y openjdk-8-jdk-headless ant build-essential cmake python git
+      - checkout
+      - run: ant junit_other_p4
+  package:
+    docker:
+      - image: ubuntu:16.04
+    steps:
+      - run: apt-get update
+      - run: apt-get install -y openjdk-8-jdk-headless ant build-essential cmake python git
+      - checkout
+      - run: ant dist_internal
+
+workflows:
+  version: 2
+  build_test_package:
+    jobs:
+      - build
+      - junit_regression_h1:
+          requires:
+            - build
+      - junit_regression_h2:
+          requires:
+            - build
+      - junit_other_p1:
+          requires:
+            - build
+      - junit_other_p2:
+          requires:
+            - build
+      - junit_other_p3:
+          requires:
+            - build
+      - junit_other_p4:
+          requires:
+            - build
+      - package:
+          requires:
+            - junit_regression_h1
+            - junit_regression_h2
+            - junit_other_p1
+            - junit_other_p2
+            - junit_other_p3
+            - junit_other_p4
