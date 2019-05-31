@@ -15,8 +15,8 @@ jobs:
             - voltdb
             - obj
   junit_regression_h1:
-    docker:
-      - image: ubuntu:16.04
+    machine:
+      image: ubuntu-1604:201903-01
     steps:
       - run: apt-get update
       - run: apt-get install -y openjdk-8-jdk-headless ant build-essential cmake python git
@@ -25,8 +25,8 @@ jobs:
           at: .
       - run: ant junit_regression_h1
   junit_regression_h2:
-    docker:
-      - image: ubuntu:16.04
+    machine:
+      image: ubuntu-1604:201903-01
     steps:
       - run: apt-get update
       - run: apt-get install -y openjdk-8-jdk-headless ant build-essential cmake python git
@@ -35,8 +35,8 @@ jobs:
           at: .
       - run: ant junit_regression_h2
   junit_other_p1:
-    docker:
-      - image: ubuntu:16.04
+    machine:
+      image: ubuntu-1604:201903-01
     steps:
       - run: apt-get update
       - run: apt-get install -y openjdk-8-jdk-headless ant build-essential cmake python git
@@ -45,8 +45,8 @@ jobs:
           at: .
       - run: ant junit_other_p1
   junit_other_p2:
-    docker:
-      - image: ubuntu:16.04
+    machine:
+      image: ubuntu-1604:201903-01
     steps:
       - run: apt-get update
       - run: apt-get install -y openjdk-8-jdk-headless ant build-essential cmake python git
@@ -55,8 +55,8 @@ jobs:
           at: .
       - run: ant junit_other_p2
   junit_other_p3:
-    docker:
-      - image: ubuntu:16.04
+    machine:
+      image: ubuntu-1604:201903-01
     steps:
       - run: apt-get update
       - run: apt-get install -y openjdk-8-jdk-headless ant build-essential cmake python git
@@ -65,8 +65,8 @@ jobs:
           at: .
       - run: ant junit_other_p3
   junit_other_p4:
-    docker:
-      - image: ubuntu:16.04
+    machine:
+      image: ubuntu-1604:201903-01
     steps:
       - run: apt-get update
       - run: apt-get install -y openjdk-8-jdk-headless ant build-essential cmake python git
@@ -75,8 +75,8 @@ jobs:
           at: .
       - run: ant junit_other_p4
   package:
-    docker:
-      - image: ubuntu:16.04
+    machine:
+      image: ubuntu-1604:201903-01
     steps:
       - run: apt-get update
       - run: apt-get install -y openjdk-8-jdk-headless ant build-essential cmake python git
